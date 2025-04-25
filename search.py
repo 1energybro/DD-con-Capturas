@@ -102,3 +102,15 @@ async def _run_searches(name):
 
 def run_searches(name):
     return asyncio.run(_run_searches(name))
+
+import sys
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("⚠️ Debes proporcionar un nombre como argumento.")
+        sys.exit(1)
+    
+    nombre = sys.argv[1]
+    # Aquí llamas tu función principal (por ejemplo, run_search(nombre))
+    # Asegúrate de definirla dentro del script si aún no existe.
+    asyncio.run(run_searches([nombre]))
