@@ -1,5 +1,5 @@
 streamlit
-playwright
+playwright install
 nest_asyncio
 python-docx
 openpyxl
