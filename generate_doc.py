@@ -93,3 +93,18 @@ def create_word_doc(results, name):
     doc.save(output)
     output.seek(0)
     return output
+
+import sys
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("⚠️ Debes proporcionar un nombre como argumento.")
+        sys.exit(1)
+    
+    nombre = sys.argv[1]
+    doc_name = f"Informe_Debida_Diligencia_{nombre.replace(' ', '_')}.docx"
+    
+    # Asegúrate de que create_word_doc acepte una lista y nombre del archivo
+    # Por ejemplo:
+    create_word_doc(results=None, output_path=doc_name, names=[nombre])  # results se puede cargar desde JSON o carpeta si quieres hacerlo modular
+
