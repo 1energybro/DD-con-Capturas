@@ -1,0 +1,6 @@
+streamlit
+playwright
+nest_asyncio
+python-docx
+openpyxl
+pillow
