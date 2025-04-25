@@ -1,38 +1,41 @@
 import os
 import asyncio
 import random
-from datetime import datetime
 from playwright.async_api import async_playwright
 import nest_asyncio
 
 nest_asyncio.apply()
 
-# Carpeta de capturas
 OFAC_DIR = "screenshots/ofac"
 BING_DIR = "screenshots/bing"
 os.makedirs(OFAC_DIR, exist_ok=True)
 os.makedirs(BING_DIR, exist_ok=True)
 
-# Categorías y términos (resumido aquí, puedes expandir en utils.py si lo prefieres)
-criterios = [
-    ["corrupción", "soborno", "cohecho"],
-    ["fraude", "lavado de dinero", "evasión de impuestos"],
-    ["crimen organizado", "narcotráfico", "cártel"],
-    ["sancionado", "penalización", "regulador"],
-    ["derechos humanos", "trabajo forzado", "discriminación"],
-    ["terrorismo", "OFAC", "lista negra"],
-    ["demandado", "litigio", "queja"],
-    ["bancarrota", "quiebra", "insolvencia"],
-    ["investigación criminal", "fiscalía", "testigo protegido"],
-    ["gobierno", "funcionario", "congreso"]
-]
+criterios_es = {
+    "Corrupción": "(\"corrupción\" OR \"soborno\" OR \"cohecho\" OR \"DOF\" OR \"SEC\" OR \"escándalo\" OR \"mordida\" OR \"comisión ilegal\" OR \"pago indebido\")",
+    "Delitos financieros": "(\"fraude\" OR \"lavado de dinero\" OR \"evasión de impuestos\" OR \"paraíso fiscal\" OR \"información privilegiada\" OR \"manipulación\" OR \"falsificación\" OR \"malversación\" OR \"desfalco\" OR \"estafa\" OR \"blanqueo de capitales\" OR \"facturero\")",
+    "Delitos penales": "(\"actividades ilegales\" OR \"crimen organizado\" OR \"narcotráfico\" OR \"drogas\" OR \"delito\" OR \"cártel\" OR \"tráfico\" OR \"criminal\" OR \"procesado\" OR \"acusado\" OR \"condenado\" OR \"crimen de guerra\" OR \"huachicol\")",
+    "Sanciones y regulación": "(\"sancionado\" OR \"sancionada\" OR \"penalización\" OR \"suspendido\" OR \"multa\" OR \"inhabilitación\" OR \"advertencia\" OR \"regulador\" OR \"irregular\" OR \"irregularidad\" OR \"incumplimiento\" OR \"violación regulatoria\")",
+    "Derechos humanos y condiciones laborales": "(\"derechos humanos\" OR \"violación de derechos\" OR \"esclavitud\" OR \"trabajo forzado\" OR \"explotación\" OR \"condiciones inhumanas\" OR \"condiciones insalubres\" OR \"violación ambiental\" OR \"discriminación\" OR \"acoso\" OR \"abuso\")",
+    "Terrorismo y financiamiento ilícito": "(\"terrorismo\" OR \"financiamiento del terrorismo\" OR \"extremismo\" OR \"grupo terrorista\" OR \"radicalización\" OR \"financiamiento ilícito\" OR \"sanción internacional\" OR \"lista negra\" OR \"lista de vigilancia\" OR \"OFAC\")",
+    "Litigios y problemas legales": "(\"demanda judicial\" OR \"demandado\" OR \"litigio\" OR \"pleito legal\" OR \"impugnar\" OR \"apelar\" OR \"queja\" OR \"citación\" OR \"infracción de patentes\" OR \"infracción de propiedad intelectual\" OR \"disputa\" OR \"conflicto legal\")",
+    "Insolvencia y problemas financieros": "(\"bancarrota\" OR \"insolvencia\" OR \"insolvente\" OR \"quiebra\" OR \"suspensión de pagos\" OR \"reestructuración\" OR \"dificultades financieras\" OR \"coacción financiera\" OR \"embargo\" OR \"liquidación\" OR \"concurso de acreedores\")",
+    "Justicia penal y cooperación": "(\"investigación criminal\" OR \"policía federal\" OR \"fiscalía\" OR \"proceso penal\" OR \"negociación de la condena\" OR \"acuerdo de clemencia\" OR \"testigo protegido\" OR \"colaboración eficaz\" OR \"delación premiada\")",
+    "Riesgo político y conexiones gubernamentales": "(\"político\" OR \"gobierno\" OR \"servicio público\" OR \"funcionario\" OR \"cargo público\" OR \"partido político\" OR \"congreso\" OR \"senado\" OR \"legislador\" OR \"donación política\" OR \"vínculo político\" OR \"conflicto de interés\")"
+}
 
-categorias = [
-    "Corrupción", "Delitos financieros", "Delitos penales", "Sanciones y regulación",
-    "Derechos humanos y condiciones laborales", "Terrorismo y financiamiento ilícito",
-    "Litigios y problemas legales", "Insolvencia y problemas financieros",
-    "Justicia penal y cooperación", "Riesgo político y conexiones gubernamentales"
-]
+criterios_en = {
+    "Corruption": "(\"corruption\" OR \"bribery\" OR \"kickback\" OR \"DOF\" OR \"SEC\" OR \"scandal\" OR \"grease payment\" OR \"illegal commission\" OR \"undue payment\")",
+    "Financial Crimes": "(\"fraud\" OR \"money laundering\" OR \"tax evasion\" OR \"tax haven\" OR \"insider trading\" OR \"manipulation\" OR \"forgery\" OR \"embezzlement\" OR \"misappropriation\" OR \"scam\" OR \"capital washing\" OR \"shell company\")",
+    "Criminal Offenses": "(\"illegal activities\" OR \"organized crime\" OR \"drug trafficking\" OR \"drugs\" OR \"crime\" OR \"cartel\" OR \"trafficking\" OR \"criminal\" OR \"indicted\" OR \"accused\" OR \"convicted\" OR \"war crime\" OR \"fuel theft\")",
+    "Sanctions and Regulation": "(\"sanctioned\" OR \"penalty\" OR \"suspended\" OR \"fine\" OR \"disqualification\" OR \"warning\" OR \"regulator\" OR \"irregular\" OR \"irregularity\" OR \"non-compliance\" OR \"regulatory violation\")",
+    "Human Rights and Labor Conditions": "(\"human rights\" OR \"rights violation\" OR \"slavery\" OR \"forced labor\" OR \"exploitation\" OR \"inhumane conditions\" OR \"unsanitary conditions\" OR \"environmental violation\" OR \"discrimination\" OR \"harassment\" OR \"abuse\")",
+    "Terrorism and Illicit Financing": "(\"terrorism\" OR \"terrorist financing\" OR \"extremism\" OR \"terrorist group\" OR \"radicalization\" OR \"illicit financing\" OR \"international sanction\" OR \"blacklist\" OR \"watchlist\" OR \"OFAC\")",
+    "Lawsuits and Legal Issues": "(\"lawsuit\" OR \"defendant\" OR \"litigation\" OR \"legal dispute\" OR \"challenge\" OR \"appeal\" OR \"complaint\" OR \"summons\" OR \"patent infringement\" OR \"IP infringement\" OR \"dispute\" OR \"legal conflict\")",
+    "Insolvency and Financial Problems": "(\"bankruptcy\" OR \"insolvency\" OR \"insolvent\" OR \"collapse\" OR \"payment suspension\" OR \"restructuring\" OR \"financial distress\" OR \"financial coercion\" OR \"seizure\" OR \"liquidation\" OR \"creditors' meeting\")",
+    "Criminal Justice and Cooperation": "(\"criminal investigation\" OR \"federal police\" OR \"prosecutor\" OR \"criminal proceedings\" OR \"plea bargain\" OR \"leniency agreement\" OR \"protected witness\" OR \"effective collaboration\" OR \"whistleblower\")",
+    "Political Risk and Government Ties": "(\"political\" OR \"government\" OR \"public service\" OR \"official\" OR \"public office\" OR \"political party\" OR \"congress\" OR \"senate\" OR \"legislator\" OR \"political donation\" OR \"political ties\" OR \"conflict of interest\")"
+}
 
 async def take_ofac_screenshot(name, page):
     await page.goto("https://sanctionssearch.ofac.treas.gov/")
@@ -51,21 +54,20 @@ async def take_ofac_screenshot(name, page):
         "has_results": has_results
     }
 
-async def take_bing_screenshot(name, criterios_categoria, category, page):
-    criterios_str = " OR ".join(f'"{term}"' for term in criterios_categoria)
-    query = f'"{name}" ({criterios_str})'
-    url = f"https://www.bing.com/search?q={query}&count=10"
-    
+async def take_bing_screenshot(name, query, category, page, lang="es"):
+    full_query = f'"{name}" AND {query}'
+    url = f"https://www.bing.com/search?q={full_query}&count=10"
     await page.goto(url)
     await page.wait_for_load_state("networkidle")
     await page.wait_for_timeout(random.randint(2000, 3000))
 
-    results_element = await page.query_selector('#b_results')
-    path = os.path.join(BING_DIR, f"bing_{category.replace(' ', '_')}_{name.replace(' ', '_')}.png")
+    folder = BING_DIR
+    path = os.path.join(folder, f"{lang}_{category.replace(' ', '_')}_{name.replace(' ', '_')}.png")
+    element = await page.query_selector('#b_results')
 
     try:
-        if results_element:
-            await results_element.screenshot(path=path)
+        if element:
+            await element.screenshot(path=path)
         else:
             await page.screenshot(path=path, full_page=True)
     except:
@@ -75,7 +77,8 @@ async def take_bing_screenshot(name, criterios_categoria, category, page):
         "type": "Bing",
         "name": name,
         "category": category,
-        "criterios": criterios_categoria,
+        "criterios": query,
+        "lang": lang,
         "path": path
     }
 
@@ -88,9 +91,11 @@ async def _run_searches(name):
 
         results.append(await take_ofac_screenshot(name, page))
 
-        for criterios_categoria, categoria in zip(criterios, categorias):
-            r = await take_bing_screenshot(name, criterios_categoria, categoria, page)
-            results.append(r)
+        for cat, expr in criterios_es.items():
+            results.append(await take_bing_screenshot(name, expr, cat, page, lang="es"))
+
+        for cat, expr in criterios_en.items():
+            results.append(await take_bing_screenshot(name, expr, cat, page, lang="en"))
 
         await browser.close()
     return results
