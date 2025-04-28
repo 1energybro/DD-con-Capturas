@@ -1,5 +1,4 @@
 import os
-import sys
 import asyncio
 import random
 from playwright.async_api import async_playwright
@@ -7,7 +6,11 @@ import nest_asyncio
 
 nest_asyncio.apply()
 
-# === CRITERIOS DEFINIDOS POR EL USUARIO (NO TOCAR) ===
+OFAC_DIR = "screenshots/ofac"
+BING_DIR = "screenshots/bing"
+os.makedirs(OFAC_DIR, exist_ok=True)
+os.makedirs(BING_DIR, exist_ok=True)
+
 criterios_es = {
     "Corrupción": "(\"corrupción\" OR \"soborno\" OR \"cohecho\" OR \"DOF\" OR \"SEC\" OR \"escándalo\" OR \"mordida\" OR \"comisión ilegal\" OR \"pago indebido\")",
     "Delitos financieros": "(\"fraude\" OR \"lavado de dinero\" OR \"evasión de impuestos\" OR \"paraíso fiscal\" OR \"información privilegiada\" OR \"manipulación\" OR \"falsificación\" OR \"malversación\" OR \"desfalco\" OR \"estafa\" OR \"blanqueo de capitales\" OR \"facturero\")",
@@ -34,27 +37,32 @@ criterios_en = {
     "Political Risk and Government Ties": "(\"political\" OR \"government\" OR \"public service\" OR \"official\" OR \"public office\" OR \"political party\" OR \"congress\" OR \"senate\" OR \"legislator\" OR \"political donation\" OR \"political ties\" OR \"conflict of interest\")"
 }
 
-async def take_ofac_screenshot(name, page, folder):
+async def take_ofac_screenshot(name, page):
     await page.goto("https://sanctionssearch.ofac.treas.gov/")
     await page.fill("#ctl00_MainContent_txtLastName", name)
     await page.click("#ctl00_MainContent_btnSearch")
     await page.wait_for_timeout(3000)
 
-    path = os.path.join(folder, f"ofac_{name.replace(' ', '_')}.png")
+    path = os.path.join(OFAC_DIR, f"ofac_{name.replace(' ', '_')}.png")
     await page.screenshot(path=path, clip={"x": 0, "y": 0, "width": 1200, "height": 1050})
     has_results = await page.query_selector("#gvSearchResults") is not None
 
-    return {"type": "OFAC", "name": name, "path": path, "has_results": has_results}
+    return {
+        "type": "OFAC",
+        "name": name,
+        "path": path,
+        "has_results": has_results
+    }
 
-async def take_bing_screenshot(name, query, category, page, folder, lang="es"):
-    query_str = f'"{name}" AND {query}'
-    url = f"https://www.bing.com/search?q={query_str}&count=10"
+async def take_bing_screenshot(name, query, category, page, lang="es"):
+    full_query = f'"{name}" AND {query}'
+    url = f"https://www.bing.com/search?q={full_query}&count=10"
     await page.goto(url)
     await page.wait_for_load_state("networkidle")
     await page.wait_for_timeout(random.randint(2000, 3000))
 
-    filename = f"{lang}_{category.replace(' ', '_')}_{name.replace(' ', '_')}.png"
-    path = os.path.join(folder, filename)
+    folder = BING_DIR
+    path = os.path.join(folder, f"{lang}_{category.replace(' ', '_')}_{name.replace(' ', '_')}.png")
     element = await page.query_selector('#b_results')
 
     try:
@@ -65,38 +73,32 @@ async def take_bing_screenshot(name, query, category, page, folder, lang="es"):
     except:
         path = None
 
-    return {"type": "Bing", "name": name, "category": category, "criterios": query, "lang": lang, "path": path}
+    return {
+        "type": "Bing",
+        "name": name,
+        "category": category,
+        "criterios": query,
+        "lang": lang,
+        "path": path
+    }
 
-async def run_searches(name, ofac_dir, bing_dir):
+async def _run_searches(name):
     results = []
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         context = await browser.new_context(viewport={"width": 1600, "height": 1200})
         page = await context.new_page()
 
-        results.append(await take_ofac_screenshot(name, page, ofac_dir))
+        results.append(await take_ofac_screenshot(name, page))
 
         for cat, expr in criterios_es.items():
-            results.append(await take_bing_screenshot(name, expr, cat, page, bing_dir, lang="es"))
+            results.append(await take_bing_screenshot(name, expr, cat, page, lang="es"))
 
         for cat, expr in criterios_en.items():
-            results.append(await take_bing_screenshot(name, expr, cat, page, bing_dir, lang="en"))
+            results.append(await take_bing_screenshot(name, expr, cat, page, lang="en"))
 
         await browser.close()
     return results
 
-# === EJECUCIÓN DESDE TERMINAL ===
-if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("⚠️ Debes proporcionar un nombre como argumento.")
-        sys.exit(1)
-
-    nombre = sys.argv[1]
-    nombre_safe = nombre.replace(" ", "_")
-    output_dir = os.path.join("capturas", nombre_safe)
-    ofac_dir = os.path.join(output_dir, "ofac")
-    bing_dir = os.path.join(output_dir, "bing")
-    os.makedirs(ofac_dir, exist_ok=True)
-    os.makedirs(bing_dir, exist_ok=True)
-
-    asyncio.run(run_searches(nombre, ofac_dir, bing_dir))
+def run_searches(name):
+    return asyncio.run(_run_searches(name))
